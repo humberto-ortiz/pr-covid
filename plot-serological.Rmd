@@ -1,0 +1,51 @@
+---
+title: "Rates of positivity in serological tests in PR."
+author: 
+  Humberto Ortiz-Zuazaga
+  University of Puerto Rico
+date: "7/16/2020"
+output:
+    ioslides_presentation:
+      fig_width: 7
+      fig_caption: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.align="center", warning=FALSE, message=FALSE)
+```
+
+## Tasa de positividad serologica en Puerto Rico
+
+```{r}
+library(tidyverse)
+dslabs::ds_theme_set()
+library(lubridate)
+```
+
+```{r}
+load("rdas/bioportal-serodata-2020-07-14.rda")
+```
+
+
+```{r}
+library(splines)
+fit <- glm(serological.positives ~ ns(date, df = 10),  offset = log(serological.total), family = "quasipoisson", data = tests)
+
+tests$fit <- predict(fit, type = "response")/tests$serological.total
+tests$se <- predict(fit, se = TRUE, type="response")$se.fit / tests$serological.total
+
+tests %>% filter(date >= make_date(2020, 3, 15)) %>%
+  ggplot(aes(date, sero_rate)) +
+  geom_hline(yintercept = 0.05, lty = 2) +
+  geom_ribbon(aes(ymin = fit - 2.54*se, ymax = fit + 2.54*se), alpha = 0.5) +
+  geom_point() +
+  geom_line(aes(y = fit)) +
+  scale_y_continuous(labels = scales::percent) +
+  ggtitle("Tasa de positividad pruebas serologicas en PR") +
+  xlab("Fecha") +
+  ylab("Tasa de positividad") +
+  geom_vline(xintercept = make_date(2020, 7, 10), lty = 2) #+
+  #annotate("text", x = make_date(2020, 7, 13), y= 0.2, label = "Datos aún ci", angle = 90)
+
+ggsave("~/Desktop/sero_positividad.png", width = 8, height = 8/1.6)
+```
